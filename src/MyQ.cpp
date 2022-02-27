@@ -12,10 +12,10 @@
 //
 
 MyQ::MyQ() {
-    authManager = new MyQAuthenticationManger();
+    authManager = new MyQAuthenticationManager();
 }
 
-bool MyQ::setup(String email, String password, HardwareSerial *inSerial, int inBaud) {
+bool MyQ::setup(HardwareSerial *inSerial, int inBaud) {
     _serial = inSerial;
     _baud = inBaud;
 
@@ -30,16 +30,17 @@ bool MyQ::setup(String email, String password, HardwareSerial *inSerial, int inB
 void MyQ::loop() {
     if (millis() % 60000 == 0) { // check once every minute
         if (!authManager->isAuthorized()) {
-            if (!authManager->authorize()) {
+            if (!authManager->authorize(_serial, _baud)) {
                 MYQ_LOG_LINE("Error refreshing auth token.");
             }
+        }
     }
 }
 
-int MyQ::getGarageState(String serial) {
+int MyQ::getGarageState(String doorSerial) {
     return -1;
 }
 
-int MyQ::setGarageState(String serial) {
+int MyQ::setGarageState(String doorSerial) {
     return -1;
 }

@@ -5,6 +5,7 @@
 #include <WiFiClientSecure.h>
 #include <ArduinoJson.h>
 #include <base64.h>
+#include "./Crypto/SHA256.h"
 #include <SPIFFS.h>
 #include <time.h>
 
@@ -47,41 +48,44 @@ String MyQAuthenticationManager::base64URLEncode(uint8_t *buffer) {
 }
 
 void MyQAuthenticationManager::sha256(const char *inBuff, uint8_t *outBuff) {
-    // SHA256 hash;
-    // hash.reset();
-    // hash.update(inBuff, strlen(inBuff));
-    // hash.finalize(outBuff, SHA256_LEN);
+    SHA256 hash;
+    hash.reset();
+    hash.update(inBuff, strlen(inBuff));
+    hash.finalize(outBuff, SHA256_LEN);
 }
 
-String MyQAuthenticationManager::getSS3AuthURL() {
+String MyQAuthenticationManager::getAuthURL() {
     MYQ_LOG_LINE("Code Verifier:     %s", codeVerifier.c_str());
-    MYQ_LOG_LINE("Code Challenge:    %s", codeChallenge.c_str());    
-    return "";
+    MYQ_LOG_LINE("Code Challenge:    %s", codeChallenge.c_str());
+    String url = String(MYQ_API_AUTH_URL) + "/authorize" +
+        "?client_id=IOS_CGI_MYQ" +
+        "&code_challenge=" + codeChallenge +
+        "&code_challenge_method=S256" + 
+        "&redirect_uri=" + MYQ_API_REDIRECT_URI + // need to url encode?
+        "&response_type=code" + 
+        "&scope=" + MYQ_API_AUTH_SCOPE; // need to url encode?
+    return url;
 }
 
 bool MyQAuthenticationManager::getAuthToken(String code) {
-    StaticJsonDocument<256> headers;
-    headers[0]["name"] = "Host";
-    headers[0]["value"] = "auth.simplisafe.com";
-    headers[1]["name"] = "Content-Type";
-    headers[1]["value"] = "application/json";
-    headers[2]["name"] = "Content-Length";
-    headers[2]["value"] = "186";
-    headers[3]["name"] = "Auth0-Client";
-    headers[3]["value"] = MYQ_OAUTH_AUTH0_CLIENT;
+    code.replace("/r", "");
+    code.replace("/n", "");
 
-    StaticJsonDocument<256> payloadDoc;
-    String payload;
-    payloadDoc["grant_type"] = "authorization_code";
-    payloadDoc["client_id"] = MYQ_OAUTH_CLIENT_ID;
-    payloadDoc["code_verifier"] = codeVerifier;
-    code.replace("\n", "");
-    code.replace("\r", "");
-    payloadDoc["code"] = code;
-    payloadDoc["redirect_uri"] = MYQ_OAUTH_REDIRECT_URI;
-    serializeJson(payloadDoc, payload);
+    StaticJsonDocument<256> headers;
+    headers[1]["name"] = "Content-Type";
+    headers[1]["value"] = "application/x-www-form-urlencoded";
+    headers[3]["name"] = "User-Agent";
+    headers[3]["value"] = "null";
+
+    String payload = String("client_id=") + MYQ_API_CLIENT_ID +
+        "&client_secret=" + MYQ_API_CLIENT_SECRET +
+        "&code=" + code +
+        "&code_verifier=" + codeVerifier +
+        "&grant_type=authorization_code" + 
+        "&redirect_uri=" + MYQ_API_REDIRECT_URI +
+        "&scope=" + MYQ_API_AUTH_SCOPE; // does this work here?
     
-    DynamicJsonDocument res = request(MYQ_OAUTH + String("/token"), 3072, false, true, payload, headers);
+    DynamicJsonDocument res = request(MYQ_API_AUTH_URL + String("/token"), 3072, false, true, payload, headers);
 
     if (res.size() != 0)
         return storeAuthToken(res);
@@ -91,23 +95,19 @@ bool MyQAuthenticationManager::getAuthToken(String code) {
 
 bool MyQAuthenticationManager::refreshAuthToken() {
     StaticJsonDocument<256> headers;
-    headers[0]["name"] = "Host";
-    headers[0]["value"] = "auth.simplisafe.com";
     headers[1]["name"] = "Content-Type";
-    headers[1]["value"] = "application/json";
-    headers[2]["name"] = "Content-Length";
-    headers[2]["value"] = "186";
-    headers[3]["name"] = "Auth0-Client";
-    headers[3]["value"] = MYQ_OAUTH_AUTH0_CLIENT;
+    headers[1]["value"] = "application/x-www-form-urlencoded";
+    headers[3]["name"] = "User-Agent";
+    headers[3]["value"] = "null";
 
-    StaticJsonDocument<256> payloadDoc;
-    String payload;
-    payloadDoc["grant_type"] = "refresh_token";
-    payloadDoc["client_id"] = MYQ_OAUTH_CLIENT_ID;
-    payloadDoc["refresh_token"] = refreshToken;
-    serializeJson(payloadDoc, payload);
+    String payload = String("client_id=") + MYQ_API_CLIENT_ID +
+        "&client_secret=" + MYQ_API_CLIENT_SECRET +
+        "&grant_type=refresh_token" + 
+        "&redirect_uri=" + MYQ_API_REDIRECT_URI +
+        "&refresh_token=" + refreshToken +
+        "&scope=" + MYQ_API_AUTH_SCOPE; // does this work here?
 
-    DynamicJsonDocument res = request(MYQ_OAUTH + String("/token"), 3072, false, true, payload, headers);
+    DynamicJsonDocument res = request(MYQ_API_AUTH_URL + String("/token"), 3072, false, true, payload, headers);
 
     if (res.size() != 0)
         return storeAuthToken(res);
@@ -116,7 +116,7 @@ bool MyQAuthenticationManager::refreshAuthToken() {
 }
 
 bool MyQAuthenticationManager::storeAuthToken(const DynamicJsonDocument &doc) {
-    accessToken = doc["acceMYQ_token"].as<String>();
+    accessToken = doc["access_token"].as<String>();
     refreshToken = doc["refresh_token"].as<String>();
     tokenType = doc["token_type"].as<String>();
     tokenIssueMS = millis();
@@ -203,7 +203,7 @@ bool MyQAuthenticationManager::readUserData() {
 // Public Member Functions
 //
 
-MyQAuthenticationManager::SS3AuthManager() {
+MyQAuthenticationManager::MyQAuthenticationManager() {
     MYQ_LOG_LINE("Making Authorization Manager.");
     if(!readUserData()) {
         MYQ_LOG_LINE("No previous data, generating codes.");
@@ -220,17 +220,17 @@ MyQAuthenticationManager::SS3AuthManager() {
 bool MyQAuthenticationManager::authorize(HardwareSerial *hwSerial, unsigned long baud) {
     if (refreshToken.length() == 0) {
         MYQ_LOG_LINE("Get that damn URL code:");
-        MYQ_LOG_LINE("%s", getSS3AuthURL().c_str());
+        MYQ_LOG_LINE("%s", getAuthURL().c_str());
         if (!hwSerial) hwSerial->begin(baud);
         while (hwSerial->available() > 0) { hwSerial->read(); } // flush serial monitor
         while (hwSerial->available() == 0) { delay(100); } // wait for url input
         String code = hwSerial->readString();
         hwSerial->println();
         if (getAuthToken(code)) {
-            MYQ_LOG_LINE("Successfully authorized Homekit with SimpliSafe.");
+            MYQ_LOG_LINE("Successfully authorized Homekit with MyQ.");
             return true;
         } else { 
-            MYQ_LOG_LINE("Error authorizing Homekit with Simplisafe.");
+            MYQ_LOG_LINE("Error authorizing Homekit with MyQ.");
             return false;
         }
     }

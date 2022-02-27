@@ -6,6 +6,8 @@
 #include <HTTPClient.h>
 #include <WiFiClientSecure.h>
 
+#define SHA256_LEN 32
+
 class MyQAuthenticationManager {
     private:
         HTTPClient *https;

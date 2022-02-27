@@ -12,10 +12,10 @@ class MyQ {
 
     public:
         MyQ();
-        bool setup(String email, String password, HardwareSerial *inSerial = &Serial, int inBaud = 115200);
+        bool setup(HardwareSerial *inSerial = &Serial, int inBaud = 115200);
         void loop();
-        int getGarageState(String serial);
-        int setGarageState(String serial);
+        int getGarageState(String doorSerial);
+        int setGarageState(String doorSerial);
 };
 
 #endif

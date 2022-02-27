@@ -19,7 +19,7 @@ void setup()
     }
     LOG("Connected to %s.", WIFI_SSID);
 
-    statusOk = myq.setup(MYQ_EMAIL, MYQ_PASS);
+    statusOk = myq.setup();
     if (statusOk) {
         int state = myq.getGarageState(MYQ_GARAGE_SERIAL);
         LOG("Garage state: %i", state);

@@ -7,6 +7,11 @@
 
 // API constants
 #define MYQ_API ""
+#define MYQ_API_AUTH_URL "https://partner-identity.myq-cloud.com/connect"
+#define MYQ_API_CLIENT_ID "IOS_CGI_MYQ"
+#define MYQ_API_CLIENT_SECRET "VUQ0RFhuS3lQV3EyNUJTdw=="
+#define MYQ_API_REDIRECT_URI "com.myqops%3A%2F%2Fios"
+#define MYQ_API_AUTH_SCOPE "MyQ_Residential%20offline_access"
 
 #define MYQ_USER_DATA_FILE "/MYQ_USER_DATA.json"
 
