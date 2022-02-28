@@ -68,14 +68,14 @@ String MyQAuthenticationManager::getAuthURL() {
 }
 
 bool MyQAuthenticationManager::getAuthToken(String code) {
-    code.replace("/r", "");
-    code.replace("/n", "");
+    code.replace("\r", "");
+    code.replace("\n", "");
 
     StaticJsonDocument<256> headers;
-    headers[1]["name"] = "Content-Type";
-    headers[1]["value"] = "application/x-www-form-urlencoded";
-    headers[3]["name"] = "User-Agent";
-    headers[3]["value"] = "null";
+    headers[0]["name"] = "Content-Type";
+    headers[0]["value"] = "application/x-www-form-urlencoded";
+    headers[1]["name"] = "User-Agent";
+    headers[1]["value"] = "null";
 
     String payload = String("client_id=") + MYQ_API_CLIENT_ID +
         "&client_secret=" + MYQ_API_CLIENT_SECRET +
@@ -85,7 +85,7 @@ bool MyQAuthenticationManager::getAuthToken(String code) {
         "&redirect_uri=" + MYQ_API_REDIRECT_URI +
         "&scope=" + MYQ_API_AUTH_SCOPE; // does this work here?
     
-    DynamicJsonDocument res = request(MYQ_API_AUTH_URL + String("/token"), 3072, false, true, payload, headers);
+    DynamicJsonDocument res = request(MYQ_API_AUTH_URL + String("/token"), 3072, false, "POST", payload, headers);
 
     if (res.size() != 0)
         return storeAuthToken(res);
@@ -95,10 +95,10 @@ bool MyQAuthenticationManager::getAuthToken(String code) {
 
 bool MyQAuthenticationManager::refreshAuthToken() {
     StaticJsonDocument<256> headers;
-    headers[1]["name"] = "Content-Type";
-    headers[1]["value"] = "application/x-www-form-urlencoded";
-    headers[3]["name"] = "User-Agent";
-    headers[3]["value"] = "null";
+    headers[0]["name"] = "Content-Type";
+    headers[0]["value"] = "application/x-www-form-urlencoded";
+    headers[1]["name"] = "User-Agent";
+    headers[1]["value"] = "null";
 
     String payload = String("client_id=") + MYQ_API_CLIENT_ID +
         "&client_secret=" + MYQ_API_CLIENT_SECRET +
@@ -107,7 +107,7 @@ bool MyQAuthenticationManager::refreshAuthToken() {
         "&refresh_token=" + refreshToken +
         "&scope=" + MYQ_API_AUTH_SCOPE; // does this work here?
 
-    DynamicJsonDocument res = request(MYQ_API_AUTH_URL + String("/token"), 3072, false, true, payload, headers);
+    DynamicJsonDocument res = request(MYQ_API_AUTH_URL + String("/token"), 3072, false, "POST", payload, headers);
 
     if (res.size() != 0)
         return storeAuthToken(res);
@@ -178,7 +178,7 @@ bool MyQAuthenticationManager::readUserData() {
     DeserializationError err = deserializeJson(userData, file);
     if (err) {
         MYQ_LOG_LINE("Error deserializing %s.", MYQ_USER_DATA_FILE);
-        MYQ_LOG_LINE("%s", err.f_str());
+        MYQ_LOG_LINE("%s", err.c_str());
         file.close();
         SPIFFS.end();
         return false;
@@ -252,13 +252,13 @@ DynamicJsonDocument MyQAuthenticationManager::request(
     String url, 
     int docSize, 
     bool auth, 
-    bool post, 
+    const char *method, 
     String payload, 
     const DynamicJsonDocument &headers, 
     const DynamicJsonDocument &filter,
     const DeserializationOption::NestingLimit &nestingLimit
 ) {
-    MYQ_LOG_LINE("Requesting: %s %s", post ? "POST" : "GET", url.c_str());
+    MYQ_LOG_LINE("Requesting: %s %s", method, url.c_str());
     MYQ_LOG_LINE("Authorized: %s", auth ? "yes" : "no");
     MYQ_LOG_LINE("Payload: %s", payload.c_str());
 
@@ -271,7 +271,7 @@ DynamicJsonDocument MyQAuthenticationManager::request(
     client = new WiFiClientSecure();
     https->useHTTP10(true); // for ArduinoJson
 
-    if (url.indexOf("https://auth") >= 0) client->setCACert(MYQ_OAUTH_CA_CERT);
+    if (url.indexOf("https://auth") >= 0) client->setCACert(MYQ_AUTH_CA_CERT);
     else if (url.indexOf("https://api") >= 0) client->setCACert(MYQ_API_CERT);
     else client->setInsecure();
 
@@ -300,10 +300,14 @@ DynamicJsonDocument MyQAuthenticationManager::request(
     }
 
     int response;
-    if (post)
+    if (strcmp(method, "POST") == 0)
         response = https->POST(payload);
-    else
+    else if (strcmp(method, "PUT") == 0)
+        response = https->PUT(payload);
+    else if (strcmp(method, "GET") == 0)
         response = https->GET();
+    else
+        MYQ_LOG_LINE("Unknown request method.");
     MYQ_LOG_LINE("Request sent.");
 
     if (response < 200 || response > 299) {

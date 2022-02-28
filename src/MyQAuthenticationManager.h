@@ -38,7 +38,7 @@ class MyQAuthenticationManager {
             String url, 
             int docSize = 3072, 
             bool auth = true, 
-            bool post = false, 
+            const char *method = "GET", 
             String payload = "", 
             const DynamicJsonDocument &headers = StaticJsonDocument<0>(), 
             const DynamicJsonDocument &filter = StaticJsonDocument<0>(),
