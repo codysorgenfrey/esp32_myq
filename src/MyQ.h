@@ -5,18 +5,18 @@
 #include "MyQAuthenticationManager.h"
 
 enum MYQ_DOOR_GETSTATE {
-    GETSTATE_UNKNOWN = -1,
-    GETSTATE_CLOSED,
-    GETSTATE_CLOSING,
-    GETSTATE_OPEN,
-    GETSTATE_OPENING,
-    GETSTATE_STOPPED,
-    GETSTATE_AUTOREVERSE
+    MYQ_DOOR_GETSTATE_UNKNOWN = -1,
+    MYQ_DOOR_GETSTATE_CLOSED,
+    MYQ_DOOR_GETSTATE_CLOSING,
+    MYQ_DOOR_GETSTATE_OPEN,
+    MYQ_DOOR_GETSTATE_OPENING,
+    MYQ_DOOR_GETSTATE_STOPPED,
+    MYQ_DOOR_GETSTATE_AUTOREVERSE
 };
 
 enum MYQ_DOOR_SETSTATE {
-    SETSTATE_CLOSED = 0,
-    SETSTATE_OPEN
+    MYQ_DOOR_SETSTATE_CLOSE = 0,
+    MYQ_DOOR_SETSTATE_OPEN
 };
 
 class MyQ {
@@ -32,8 +32,8 @@ class MyQ {
         MyQ();
         bool setup(HardwareSerial *inSerial = &Serial, int inBaud = 115200);
         void loop();
-        MYQ_DOOR_GETSTATE getGarageState(String doorSerial);
-        MYQ_DOOR_GETSTATE setGarageState(String doorSerial, MYQ_DOOR_SETSTATE state);
+        int getGarageState(String doorSerial);
+        int setGarageState(String doorSerial, MYQ_DOOR_SETSTATE state);
 };
 
 #endif

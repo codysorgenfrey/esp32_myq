@@ -23,8 +23,10 @@ void setup()
     if (statusOk) {
         int state = myq.getGarageState(MYQ_GARAGE_SERIAL);
         LOG("Garage state: %i", state);
-    }
 
+        state = myq.setGarageState(MYQ_GARAGE_SERIAL, MYQ_DOOR_SETSTATE_CLOSE);
+        LOG("Told garage to close. Door state: %i", state);
+    }
 }
 
 void loop(){

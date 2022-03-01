@@ -327,7 +327,7 @@ DynamicJsonDocument MyQAuthenticationManager::request(
     
     if (err) {
         if (err == DeserializationError::EmptyInput) doc["response"] = response; // no json response
-        else MYQ_LOG_LINE("API request deserialization error: %s", err.f_str());
+        else MYQ_LOG_LINE("API request deserialization error: %s", err.c_str());
     } else {
         #if MYQ_DEBUG
             serializeJsonPretty(doc, Serial);
