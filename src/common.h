@@ -2,7 +2,7 @@
 #define __MYQCOMMON_H__
 
 #ifndef MYQ_DEBUG
-#define MYQ_DEBUG true
+#define MYQ_DEBUG false
 #endif
 
 // API constants
