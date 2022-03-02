@@ -5,7 +5,7 @@
 #include <WiFiClientSecure.h>
 #include <ArduinoJson.h>
 #include <base64.h>
-#include "./Crypto/SHA256.h"
+#include <SHA256.h>
 #include <SPIFFS.h>
 #include <time.h>
 

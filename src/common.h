@@ -6,7 +6,6 @@
 #endif
 
 // API constants
-#define MYQ_API ""
 #define MYQ_API_AUTH_URL "https://partner-identity.myq-cloud.com/connect"
 #define MYQ_API_CLIENT_ID "IOS_CGI_MYQ"
 #define MYQ_API_CLIENT_SECRET "VUQ0RFhuS3lQV3EyNUJTdw=="
