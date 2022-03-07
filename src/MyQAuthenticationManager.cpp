@@ -188,6 +188,20 @@ bool MyQAuthenticationManager::readUserData() {
     refreshToken = userData["refreshToken"].as<String>();
     codeVerifier = userData["codeVerifier"].as<String>();
 
+    if (
+        accessToken.equals("null") ||
+        refreshToken.equals("null") ||
+        codeVerifier.equals("null")
+    ) {
+        MYQ_ERROR_LINE("Found file but contents are empty.");
+        accessToken = "";
+        refreshToken = "";
+        codeVerifier = "";
+        file.close();
+        SPIFFS.end();
+        return false;
+    }
+
     MYQ_LOG_LINE("Found...");
     #if MYQ_DEBUG
         serializeJsonPretty(userData, Serial);
@@ -258,11 +272,12 @@ DynamicJsonDocument MyQAuthenticationManager::request(
     const DynamicJsonDocument &filter,
     const DeserializationOption::NestingLimit &nestingLimit
 ) {
-    StaticJsonDocument<0> doc;
-
     MYQ_LOG_LINE("Requesting: %s %s", method, url.c_str());
     MYQ_LOG_LINE("Authorized: %s", auth ? "yes" : "no");
     MYQ_LOG_LINE("Payload: %s", payload.c_str());
+
+    DynamicJsonDocument doc(docSize);
+    MYQ_LOG_LINE("Created doc of %i size", docSize);
 
     if (WiFi.status() == WL_CONNECTED) {
         HTTPClient https;
@@ -303,19 +318,16 @@ DynamicJsonDocument MyQAuthenticationManager::request(
 
             if (response >= 200 || response <= 299) {
                 MYQ_LOG_LINE("Response: %i", response);
-            
-                doc = DynamicJsonDocument(docSize);
-                MYQ_LOG_LINE("Created doc of %i size", docSize);
                 
                 DeserializationError err;
                 if (filter.size() != 0) err = deserializeJson(doc, https.getStream(), DeserializationOption::Filter(filter), nestingLimit);
                 else err = deserializeJson(doc, https.getStream(), nestingLimit);
-                MYQ_LOG_LINE("Desearialized stream.");
                 
                 if (err) {
                     if (err == DeserializationError::EmptyInput) doc["response"] = response; // no json response
                     else MYQ_ERROR_LINE("API request deserialization error: %s", err.c_str());
                 } else {
+                    MYQ_LOG_LINE("Desearialized stream.");
                     #if MYQ_DEBUG
                         serializeJsonPretty(doc, Serial);
                         Serial.println("");
