@@ -32,7 +32,7 @@ String MyQ::getAccountId() {
         return accountId; 
     }
 
-    MYQ_LOG_LINE("Error getting account ID.");
+    MYQ_ERROR_LINE("Error getting account ID.");
     return "";
 }
 
@@ -49,7 +49,7 @@ bool MyQ::setup(HardwareSerial *inSerial, int inBaud) {
     _baud = inBaud;
 
     if(!authManager->authorize(_serial, _baud)) {
-        MYQ_LOG_LINE("Failed to authorize with MyQ.");
+        MYQ_ERROR_LINE("Failed to authorize with MyQ.");
         return false;
     }
 
@@ -60,7 +60,7 @@ void MyQ::loop() {
     if (millis() % 60000 == 0) { // check once every minute
         if (!authManager->isAuthorized()) {
             if (!authManager->authorize(_serial, _baud)) {
-                MYQ_LOG_LINE("Error refreshing auth token.");
+                MYQ_ERROR_LINE("Error refreshing auth token.");
             }
         }
     }
@@ -93,7 +93,7 @@ int MyQ::getGarageState(String doorSerial) {
         }
     }
 
-    MYQ_LOG_LINE("Error getting door state.");
+    MYQ_ERROR_LINE("Error getting door state.");
     return MYQ_DOOR_GETSTATE_UNKNOWN;
 }
 
@@ -120,5 +120,6 @@ int MyQ::setGarageState(String doorSerial, MYQ_DOOR_SETSTATE state) {
         }
     }
 
+    MYQ_ERROR_LINE("Error setting door state.");
     return MYQ_DOOR_GETSTATE_UNKNOWN;
 }

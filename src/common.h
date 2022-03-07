@@ -1,9 +1,8 @@
+#pragma once
 #ifndef __MYQCOMMON_H__
 #define __MYQCOMMON_H__
 
-#ifndef MYQ_DEBUG
-#define MYQ_DEBUG false
-#endif
+#include <Arduino.h>
 
 // API constants
 #define MYQ_API_AUTH_URL "https://partner-identity.myq-cloud.com/connect"
@@ -20,16 +19,7 @@
 
 #define MYQ_REFRESH_BUFFER 300000 // 5 minutes
 
-// Logging
-#if MYQ_DEBUG
-#define MYQ_LOG(message, ...) printf(">>> [%7d][%.2fkb] MyQ: " message , millis(), (esp_get_free_heap_size() * 0.001f), ##__VA_ARGS__)
-#define MYQ_LOG_LINE(message, ...) printf(">>> [%7d][%.2fkb] MyQ: " message "\n", millis(), (esp_get_free_heap_size() * 0.001f), ##__VA_ARGS__)
-#else
-#define MYQ_LOG(message, ...)
-#define MYQ_LOG_LINE(message, ...)
-#endif
-
-#define MYQ_AUTH_CA_CERT \
+#define MYQ_CA_CERT \
 "-----BEGIN CERTIFICATE-----\n\
 MIIDxTCCAq2gAwIBAgIBADANBgkqhkiG9w0BAQsFADCBgzELMAkGA1UEBhMCVVMx\n\
 EDAOBgNVBAgTB0FyaXpvbmExEzARBgNVBAcTClNjb3R0c2RhbGUxGjAYBgNVBAoT\n\
@@ -54,7 +44,29 @@ LPAvTK33sefOT6jEm0pUBsV/fdUID+Ic/n4XuKxe9tQWskMJDE32p2u0mYRlynqI\n\
 4uJEvlz36hz1\n\
 -----END CERTIFICATE-----\n"
 
-#define MYQ_API_CERT \
-""
+// Logging
+#define MYQ_DEBUG_NONE -1
+#define MYQ_DEBUG_ERROR 0
+#define MYQ_DEBUG_INFO 1
+
+#ifndef MYQ_DEBUG
+    #define MYQ_DEBUG MYQ_DEBUG_ERROR
+#endif
+
+#if MYQ_DEBUG >= MYQ_DEBUG_ERROR
+    #define MYQ_ERROR(message, ...) printf("ERR [%7lu][%.2fkb] MyQ: " message , millis(), (esp_get_free_heap_size() * 0.001f), ##__VA_ARGS__)
+    #define MYQ_ERROR_LINE(message, ...) printf("ERR [%7lu][%.2fkb] MyQ: " message "\n", millis(), (esp_get_free_heap_size() * 0.001f), ##__VA_ARGS__)
+#else
+    #define MYQ_ERROR(message, ...)
+    #define MYQ_ERROR_LINE(message, ...)
+#endif
+
+#if MYQ_DEBUG >= MYQ_DEBUG_INFO
+    #define MYQ_LOG(message, ...) printf(">>> [%7lu][%.2fkb] MyQ: " message , millis(), (esp_get_free_heap_size() * 0.001f), ##__VA_ARGS__)
+    #define MYQ_LOG_LINE(message, ...) printf(">>> [%7lu][%.2fkb] MyQ: " message "\n", millis(), (esp_get_free_heap_size() * 0.001f), ##__VA_ARGS__)
+#else
+    #define MYQ_LOG(message, ...)
+    #define MYQ_LOG_LINE(message, ...)
+#endif
 
 #endif

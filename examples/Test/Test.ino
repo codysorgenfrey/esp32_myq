@@ -12,7 +12,7 @@ void setup()
     Serial.begin(115200);
     while (!Serial) { ; }; // wait for serial
     LOG("Starting...");
-
+ 
     WiFi.begin(WIFI_SSID, WIFI_PASS);
     while (WiFi.status() != WL_CONNECTED) {
         delay(500);

@@ -1,3 +1,4 @@
+#pragma once
 #ifndef __MYQ_H__
 #define __MYQ_H__
 

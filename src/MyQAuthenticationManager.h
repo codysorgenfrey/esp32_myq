@@ -1,17 +1,14 @@
+#pragma once
 #ifndef __MYQAUTHENTICATIONMANAGER_H__
 #define __MYQAUTHENTICATIONMANAGER_H__
 
 #include "common.h"
 #include <ArduinoJson.h>
-#include <HTTPClient.h>
-#include <WiFiClientSecure.h>
 
 #define SHA256_LEN 32
 
 class MyQAuthenticationManager {
     private:
-        HTTPClient *https;
-        WiFiClientSecure *client;
         String refreshToken;
         String codeVerifier;
         String codeChallenge;

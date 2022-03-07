@@ -135,19 +135,19 @@ bool MyQAuthenticationManager::writeUserData() {
     userData["codeVerifier"] = codeVerifier;
 
     if (!SPIFFS.begin(true)) {
-        MYQ_LOG_LINE("Error starting SPIFFS.");
+        MYQ_ERROR_LINE("Error starting SPIFFS.");
         return false;
     }
 
     File file = SPIFFS.open(MYQ_USER_DATA_FILE, "w");
     if (!file) {
-        MYQ_LOG_LINE("Failed to open %s.", MYQ_USER_DATA_FILE);
+        MYQ_ERROR_LINE("Failed to open %s.", MYQ_USER_DATA_FILE);
         SPIFFS.end();
         return false;
     }
 
     if (serializeJson(userData, file) == 0) {
-        MYQ_LOG_LINE("Failed to write data to %s.", MYQ_USER_DATA_FILE);
+        MYQ_ERROR_LINE("Failed to write data to %s.", MYQ_USER_DATA_FILE);
         file.close();
         SPIFFS.end();
         return false;
@@ -163,13 +163,13 @@ bool MyQAuthenticationManager::writeUserData() {
 bool MyQAuthenticationManager::readUserData() {
     MYQ_LOG_LINE("Reading user data file.");
     if (!SPIFFS.begin(true)) {
-        MYQ_LOG_LINE("Error starting SPIFFS.");
+        MYQ_ERROR_LINE("Error starting SPIFFS.");
         return false;
     }
 
     File file = SPIFFS.open(MYQ_USER_DATA_FILE, "r");
     if (!file) {
-        MYQ_LOG_LINE("Failed to open %s.", MYQ_USER_DATA_FILE);
+        MYQ_ERROR_LINE("Failed to open %s.", MYQ_USER_DATA_FILE);
         SPIFFS.end();
         return false;
     }
@@ -177,8 +177,8 @@ bool MyQAuthenticationManager::readUserData() {
     DynamicJsonDocument userData(1536);
     DeserializationError err = deserializeJson(userData, file);
     if (err) {
-        MYQ_LOG_LINE("Error deserializing %s.", MYQ_USER_DATA_FILE);
-        MYQ_LOG_LINE("%s", err.c_str());
+        MYQ_ERROR_LINE("Error deserializing %s.", MYQ_USER_DATA_FILE);
+        MYQ_ERROR_LINE("%s", err.c_str());
         file.close();
         SPIFFS.end();
         return false;
@@ -230,7 +230,7 @@ bool MyQAuthenticationManager::authorize(HardwareSerial *hwSerial, unsigned long
             MYQ_LOG_LINE("Successfully authorized Homekit with MyQ.");
             return true;
         } else { 
-            MYQ_LOG_LINE("Error authorizing Homekit with MyQ.");
+            MYQ_ERROR_LINE("Error authorizing Homekit with MyQ.");
             return false;
         }
     }
@@ -258,87 +258,82 @@ DynamicJsonDocument MyQAuthenticationManager::request(
     const DynamicJsonDocument &filter,
     const DeserializationOption::NestingLimit &nestingLimit
 ) {
+    StaticJsonDocument<0> doc;
+
     MYQ_LOG_LINE("Requesting: %s %s", method, url.c_str());
     MYQ_LOG_LINE("Authorized: %s", auth ? "yes" : "no");
     MYQ_LOG_LINE("Payload: %s", payload.c_str());
 
-    if (WiFi.status() != WL_CONNECTED) {
-        MYQ_LOG_LINE("Not connected to WiFi.");
-        return StaticJsonDocument<0>();
-    }
+    if (WiFi.status() == WL_CONNECTED) {
+        HTTPClient https;
+        WiFiClientSecure client;
+        https.useHTTP10(true); // for ArduinoJson
+        client.setCACert(MYQ_CA_CERT);
 
-    https = new HTTPClient();
-    client = new WiFiClientSecure();
-    https->useHTTP10(true); // for ArduinoJson
+        if (https.begin(client, url)){
+            if (auth) {
+                MYQ_LOG_LINE("Setting auth creds.");
+                https.setAuthorization(""); // clear it out
+                https.addHeader("Authorization", tokenType + " " + accessToken);
+            }
 
-    if (url.indexOf("https://auth") >= 0) client->setCACert(MYQ_AUTH_CA_CERT);
-    else if (url.indexOf("https://api") >= 0) client->setCACert(MYQ_API_CERT);
-    else client->setInsecure();
+            if (headers.size() != 0) {
+                MYQ_LOG_LINE("Headers is bigger than 0.");
+                for (int x = 0; x < headers.size(); x++) {
+                    MYQ_LOG_LINE("Adding %i header.", x);
+                    https.addHeader(headers[x]["name"], headers[x]["value"]);
+                    MYQ_LOG_LINE(
+                        "Header added... %s: %s", 
+                        headers[x]["name"].as<const char*>(), 
+                        headers[x]["value"].as<const char*>()
+                    );
+                }
+            }
 
-    if (!https->begin(*client, url)){
-        MYQ_LOG_LINE("Could not connect to %s.", url.c_str());
-        return StaticJsonDocument<0>();
-    }
+            int response;
+            if (strcmp(method, "POST") == 0)
+                response = https.POST(payload);
+            else if (strcmp(method, "PUT") == 0)
+                response = https.PUT(payload);
+            else if (strcmp(method, "GET") == 0)
+                response = https.GET();
+            else
+                MYQ_ERROR_LINE("Unknown request method.");
+            MYQ_LOG_LINE("Request sent.");
 
-    if (auth) {
-        MYQ_LOG_LINE("Setting auth creds.");
-        https->setAuthorization(""); // clear it out
-        https->addHeader("Authorization", tokenType + " " + accessToken);
-    }
+            if (response >= 200 || response <= 299) {
+                MYQ_LOG_LINE("Response: %i", response);
+            
+                doc = DynamicJsonDocument(docSize);
+                MYQ_LOG_LINE("Created doc of %i size", docSize);
+                
+                DeserializationError err;
+                if (filter.size() != 0) err = deserializeJson(doc, https.getStream(), DeserializationOption::Filter(filter), nestingLimit);
+                else err = deserializeJson(doc, https.getStream(), nestingLimit);
+                MYQ_LOG_LINE("Desearialized stream.");
+                
+                if (err) {
+                    if (err == DeserializationError::EmptyInput) doc["response"] = response; // no json response
+                    else MYQ_ERROR_LINE("API request deserialization error: %s", err.c_str());
+                } else {
+                    #if MYQ_DEBUG
+                        serializeJsonPretty(doc, Serial);
+                        Serial.println("");
+                    #endif
+                }
+            } else {
+                MYQ_ERROR_LINE("%s Error, code: %i.", method, response);
+                MYQ_ERROR_LINE("Response: %s", https.getString().c_str());
+            }
 
-    if (headers.size() != 0) {
-        MYQ_LOG_LINE("Headers is bigger than 0.");
-        for (int x = 0; x < headers.size(); x++) {
-            MYQ_LOG_LINE("Adding %i header.", x);
-            https->addHeader(headers[x]["name"], headers[x]["value"]);
-            MYQ_LOG_LINE(
-                "Header added... %s: %s", 
-                headers[x]["name"].as<const char*>(), 
-                headers[x]["value"].as<const char*>()
-            );
+            client.stop();
+            https.end();
+        } else {
+            MYQ_ERROR_LINE("Could not connect to %s.", url.c_str());
         }
-    }
-
-    int response;
-    if (strcmp(method, "POST") == 0)
-        response = https->POST(payload);
-    else if (strcmp(method, "PUT") == 0)
-        response = https->PUT(payload);
-    else if (strcmp(method, "GET") == 0)
-        response = https->GET();
-    else
-        MYQ_LOG_LINE("Unknown request method.");
-    MYQ_LOG_LINE("Request sent.");
-
-    if (response < 200 || response > 299) {
-        MYQ_LOG_LINE("Error, code: %i.", response);
-        MYQ_LOG_LINE("Response: %s", https->getString().c_str());
-        return StaticJsonDocument<0>();
-    }
-    MYQ_LOG_LINE("Response: %i", response);
-    
-    DynamicJsonDocument doc(docSize);
-    MYQ_LOG_LINE("Created doc of %i size", docSize);
-    
-    DeserializationError err;
-    if (filter.size() != 0) err = deserializeJson(doc, https->getStream(), DeserializationOption::Filter(filter), nestingLimit);
-    else err = deserializeJson(doc, https->getStream(), nestingLimit);
-    MYQ_LOG_LINE("Desearialized stream.");
-    
-    if (err) {
-        if (err == DeserializationError::EmptyInput) doc["response"] = response; // no json response
-        else MYQ_LOG_LINE("API request deserialization error: %s", err.c_str());
     } else {
-        #if MYQ_DEBUG
-            serializeJsonPretty(doc, Serial);
-            Serial.println("");
-        #endif
+        MYQ_ERROR_LINE("Not connected to WiFi.");
     }
-
-    client->stop();
-    https->end();
-    delete https;
-    delete client;
 
     return doc;
 }
