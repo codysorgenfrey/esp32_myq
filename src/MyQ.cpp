@@ -20,6 +20,7 @@ const char* MYQ_DOOR_SETSTATE_VALUES[2] = {
 //
 
 String MyQ::getAccountId() {
+    MYQ_LOG_LINE("Getting account ID.");
     if (accountId.length() != 0) {
         MYQ_LOG_LINE("Account ID already exists.");
         return accountId;
@@ -29,6 +30,7 @@ String MyQ::getAccountId() {
 
     if (res.size() > 0) {
         accountId = res["accounts"][0]["id"].as<String>();
+        MYQ_LOG_LINE("Got account ID from MyQ.");
         return accountId; 
     }
 
@@ -41,10 +43,12 @@ String MyQ::getAccountId() {
 //
 
 MyQ::MyQ() {
+    MYQ_LOG_LINE("Creating MyQ object.");
     authManager = new MyQAuthenticationManager();
 }
 
 bool MyQ::setup(HardwareSerial *inSerial, int inBaud) {
+    MYQ_LOG_LINE("Setting up MyQ object.");
     _serial = inSerial;
     _baud = inBaud;
 
@@ -57,16 +61,21 @@ bool MyQ::setup(HardwareSerial *inSerial, int inBaud) {
 }
 
 void MyQ::loop() {
-    if (millis() % 60000 == 0) { // check once every minute
+    const unsigned long now = millis();
+    const unsigned long diff = max(now, lastAuthCheck) - min(now, lastAuthCheck);
+    if (diff >= MYQ_AUTH_CHECK_INTERVAL) {
         if (!authManager->isAuthorized()) {
             if (!authManager->authorize(_serial, _baud)) {
                 MYQ_ERROR_LINE("Error refreshing auth token.");
             }
         }
+
+        lastAuthCheck = now;
     }
 }
 
 int MyQ::getGarageState(String doorSerial) {
+    MYQ_LOG_LINE("Getting state for %s.", doorSerial);
     if (accountId.length() == 0) {
         if (getAccountId().length() == 0) return MYQ_DOOR_GETSTATE_UNKNOWN;
     }
@@ -98,6 +107,7 @@ int MyQ::getGarageState(String doorSerial) {
 }
 
 int MyQ::setGarageState(String doorSerial, MYQ_DOOR_SETSTATE state) {
+    MYQ_LOG_LINE("Setting state for %s.", doorSerial);
     StaticJsonDocument<192> headers;
     headers[0]["name"] = "Content-Length";
     headers[0]["value"] = "0";
@@ -114,6 +124,7 @@ int MyQ::setGarageState(String doorSerial, MYQ_DOOR_SETSTATE state) {
 
     if (res.size() > 0) {
         if (res["response"] == 202) {
+            MYQ_LOG_LINE("Set state for %s.", doorSerial);
             if (state == MYQ_DOOR_SETSTATE_CLOSE) return MYQ_DOOR_GETSTATE_CLOSING;
             else if (state == MYQ_DOOR_SETSTATE_OPEN) return MYQ_DOOR_GETSTATE_OPENING;
             else return MYQ_DOOR_GETSTATE_UNKNOWN;

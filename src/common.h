@@ -17,7 +17,8 @@
 #define MYQ_DST_OFFSET 1 * 3600
 #define MYQ_NTP_SERVER "pool.ntp.org"
 
-#define MYQ_REFRESH_BUFFER 300000 // 5 minutes
+#define MYQ_AUTH_REFRESH_BUFFER 300000 // 5 minutes
+#define MYQ_AUTH_CHECK_INTERVAL 60000 // one minute
 
 #define MYQ_CA_CERT \
 "-----BEGIN CERTIFICATE-----\n\
@@ -45,15 +46,16 @@ LPAvTK33sefOT6jEm0pUBsV/fdUID+Ic/n4XuKxe9tQWskMJDE32p2u0mYRlynqI\n\
 -----END CERTIFICATE-----\n"
 
 // Logging
-#define MYQ_DEBUG_NONE -1
-#define MYQ_DEBUG_ERROR 0
-#define MYQ_DEBUG_INFO 1
+#define MYQ_DEBUG_LEVEL_NONE -1
+#define MYQ_DEBUG_LEVEL_ERROR 0
+#define MYQ_DEBUG_LEVEL_INFO 1
+#define MYQ_DEBUG_LEVEL_ALL 2
 
 #ifndef MYQ_DEBUG
-    #define MYQ_DEBUG MYQ_DEBUG_ERROR
+    #define MYQ_DEBUG MYQ_DEBUG_LEVEL_INFO
 #endif
 
-#if MYQ_DEBUG >= MYQ_DEBUG_ERROR
+#if MYQ_DEBUG >= MYQ_DEBUG_LEVEL_ERROR
     #define MYQ_ERROR(message, ...) printf("ERR [%7lu][%.2fkb] MyQ: " message , millis(), (esp_get_free_heap_size() * 0.001f), ##__VA_ARGS__)
     #define MYQ_ERROR_LINE(message, ...) printf("ERR [%7lu][%.2fkb] MyQ: " message "\n", millis(), (esp_get_free_heap_size() * 0.001f), ##__VA_ARGS__)
 #else
@@ -61,12 +63,20 @@ LPAvTK33sefOT6jEm0pUBsV/fdUID+Ic/n4XuKxe9tQWskMJDE32p2u0mYRlynqI\n\
     #define MYQ_ERROR_LINE(message, ...)
 #endif
 
-#if MYQ_DEBUG >= MYQ_DEBUG_INFO
+#if MYQ_DEBUG >= MYQ_DEBUG_LEVEL_INFO
     #define MYQ_LOG(message, ...) printf(">>> [%7lu][%.2fkb] MyQ: " message , millis(), (esp_get_free_heap_size() * 0.001f), ##__VA_ARGS__)
     #define MYQ_LOG_LINE(message, ...) printf(">>> [%7lu][%.2fkb] MyQ: " message "\n", millis(), (esp_get_free_heap_size() * 0.001f), ##__VA_ARGS__)
 #else
     #define MYQ_LOG(message, ...)
     #define MYQ_LOG_LINE(message, ...)
+#endif
+
+#if MYQ_DEBUG >= MYQ_DEBUG_LEVEL_ALL
+    #define MYQ_DETAIL(message, ...) printf(">>> [%7lu][%.2fkb] MyQ: " message , millis(), (esp_get_free_heap_size() * 0.001f), ##__VA_ARGS__)
+    #define MYQ_DETAIL_LINE(message, ...) printf(">>> [%7lu][%.2fkb] MyQ: " message "\n", millis(), (esp_get_free_heap_size() * 0.001f), ##__VA_ARGS__)
+#else
+    #define MYQ_DETAIL(message, ...)
+    #define MYQ_DETAIL_LINE(message, ...)
 #endif
 
 #endif

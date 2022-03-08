@@ -26,6 +26,7 @@ class MyQ {
         HardwareSerial *_serial;
         int _baud;
         String accountId;
+        unsigned long lastAuthCheck;
 
         String getAccountId();
 
