@@ -127,6 +127,8 @@ bool MyQAuthenticationManager::storeAuthToken(const DynamicJsonDocument &doc) {
 
 bool MyQAuthenticationManager::writeUserData() {
     // store accessToken, codeVerifier, refreshToken here
+    bool success = true;
+
     DynamicJsonDocument userData(1536);
     MYQ_LOG_LINE("Created user data object");
 
@@ -134,83 +136,82 @@ bool MyQAuthenticationManager::writeUserData() {
     userData["refreshToken"] = refreshToken;
     userData["codeVerifier"] = codeVerifier;
 
-    if (!SPIFFS.begin(true)) {
+    if (SPIFFS.begin(true)) {
+        File file = SPIFFS.open(MYQ_USER_DATA_FILE, "w");
+        if (file) {
+            if (serializeJson(userData, file) > 0) {
+                MYQ_LOG_LINE("Wrote to user data file.");
+            } else {
+                MYQ_ERROR_LINE("Failed to write data to %s.", MYQ_USER_DATA_FILE);
+                success = false;
+            }
+
+            file.close();
+        } else {
+            MYQ_ERROR_LINE("Failed to open %s.", MYQ_USER_DATA_FILE);
+            success = false;
+        }
+
+        SPIFFS.end();
+    } else {
         MYQ_ERROR_LINE("Error starting SPIFFS.");
-        return false;
+        success = false;
     }
 
-    File file = SPIFFS.open(MYQ_USER_DATA_FILE, "w");
-    if (!file) {
-        MYQ_ERROR_LINE("Failed to open %s.", MYQ_USER_DATA_FILE);
-        SPIFFS.end();
-        return false;
-    }
-
-    if (serializeJson(userData, file) == 0) {
-        MYQ_ERROR_LINE("Failed to write data to %s.", MYQ_USER_DATA_FILE);
-        file.close();
-        SPIFFS.end();
-        return false;
-    }
-
-    MYQ_LOG_LINE("Wrote to user data file.");
-
-    file.close();
-    SPIFFS.end();
-    return true;
+    return success;
 }
 
 bool MyQAuthenticationManager::readUserData() {
     MYQ_LOG_LINE("Reading user data file.");
-    if (!SPIFFS.begin(true)) {
+
+    bool success = true;
+
+    if (SPIFFS.begin(true)) {
+        File file = SPIFFS.open(MYQ_USER_DATA_FILE, "r");
+        if (file) {
+            DynamicJsonDocument userData(1536);
+            DeserializationError err = deserializeJson(userData, file);
+            if (err) {
+                MYQ_ERROR_LINE("Error deserializing %s.", MYQ_USER_DATA_FILE);
+                MYQ_ERROR_LINE("%s", err.c_str());
+                success = false;
+            } else {
+                accessToken = userData["accessToken"].as<String>();
+                refreshToken = userData["refreshToken"].as<String>();
+                codeVerifier = userData["codeVerifier"].as<String>();
+
+                if (
+                    accessToken.equals("null") ||
+                    refreshToken.equals("null") ||
+                    codeVerifier.equals("null")
+                ) {
+                    MYQ_ERROR_LINE("Found file but contents are empty.");
+                    accessToken = "";
+                    refreshToken = "";
+                    codeVerifier = "";
+                    success = false;
+                }
+
+                MYQ_LOG_LINE("Found...");
+                #if MYQ_DEBUG >= MYQ_DEBUG_INFO
+                    serializeJsonPretty(userData, Serial);
+                    Serial.println("");
+                #endif
+            }
+
+            file.close();
+        } else {
+            MYQ_ERROR_LINE("Failed to open %s.", MYQ_USER_DATA_FILE);
+            success = false;
+        }
+
+        SPIFFS.end();
+    } else {
         MYQ_ERROR_LINE("Error starting SPIFFS.");
-        return false;
+        success = false;
     }
 
-    File file = SPIFFS.open(MYQ_USER_DATA_FILE, "r");
-    if (!file) {
-        MYQ_ERROR_LINE("Failed to open %s.", MYQ_USER_DATA_FILE);
-        SPIFFS.end();
-        return false;
-    }
-
-    DynamicJsonDocument userData(1536);
-    DeserializationError err = deserializeJson(userData, file);
-    if (err) {
-        MYQ_ERROR_LINE("Error deserializing %s.", MYQ_USER_DATA_FILE);
-        MYQ_ERROR_LINE("%s", err.c_str());
-        file.close();
-        SPIFFS.end();
-        return false;
-    }
-
-    accessToken = userData["accessToken"].as<String>();
-    refreshToken = userData["refreshToken"].as<String>();
-    codeVerifier = userData["codeVerifier"].as<String>();
-
-    if (
-        accessToken.equals("null") ||
-        refreshToken.equals("null") ||
-        codeVerifier.equals("null")
-    ) {
-        MYQ_ERROR_LINE("Found file but contents are empty.");
-        accessToken = "";
-        refreshToken = "";
-        codeVerifier = "";
-        file.close();
-        SPIFFS.end();
-        return false;
-    }
-
-    MYQ_LOG_LINE("Found...");
-    #if MYQ_DEBUG
-        serializeJsonPretty(userData, Serial);
-        Serial.println("");
-    #endif
-
-    file.close();
-    SPIFFS.end();
-    return true;
+    return success;
 }
 
 //
