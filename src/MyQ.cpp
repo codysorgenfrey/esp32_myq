@@ -26,10 +26,11 @@ String MyQ::getAccountId() {
         return accountId;
     }
 
-    DynamicJsonDocument res = authManager->request("https://accounts.myq-cloud.com/api/v6.0/accounts", 384);
+    StaticJsonDocument<384> resDoc;
+    int res = authManager->request("https://accounts.myq-cloud.com/api/v6.0/accounts", resDoc);
 
-    if (res.size() > 0) {
-        accountId = res["accounts"][0]["id"].as<String>();
+    if (res >= 200 && res <= 299) {
+        accountId = resDoc["accounts"][0]["id"].as<String>();
         MYQ_LOG_LINE("Got account ID %s.", accountId.c_str());
         return accountId; 
     }
@@ -47,12 +48,12 @@ MyQ::MyQ() {
     authManager = new MyQAuthenticationManager();
 }
 
-bool MyQ::setup(HardwareSerial *inSerial, int inBaud) {
+bool MyQ::setup(bool forceReauth, HardwareSerial *inSerial, int inBaud) {
     MYQ_LOG_LINE("Setting up MyQ object.");
     _serial = inSerial;
     _baud = inBaud;
 
-    if(!authManager->authorize(_serial, _baud)) {
+    if(!authManager->authorize(forceReauth, _serial, _baud)) {
         MYQ_ERROR_LINE("Failed to authorize with MyQ.");
         return false;
     }
@@ -65,7 +66,7 @@ void MyQ::loop() {
     const unsigned long diff = max(now, lastAuthCheck) - min(now, lastAuthCheck);
     if (diff >= MYQ_AUTH_CHECK_INTERVAL) {
         if (!authManager->isAuthorized()) {
-            if (!authManager->authorize(_serial, _baud)) {
+            if (!authManager->authorize(false, _serial, _baud)) {
                 MYQ_ERROR_LINE("Error refreshing auth token.");
             }
         }
@@ -84,9 +85,10 @@ int MyQ::getGarageState(String doorSerial) {
     filter["items"][0]["serial_number"] = doorSerial;
     filter["items"][0]["state"]["door_state"] = true;
 
-    DynamicJsonDocument res = authManager->request(
+    StaticJsonDocument<256> resDoc; 
+    int res = authManager->request(
         "https://devices.myq-cloud.com/api/v5.2/Accounts/" + accountId + "/Devices",
-        256,
+        resDoc,
         true,
         "GET",
         "",
@@ -94,8 +96,8 @@ int MyQ::getGarageState(String doorSerial) {
         filter
     );
 
-    if (res.size() > 0) {
-        const char *state = res["items"][0]["state"]["door_state"].as<const char*>();
+    if (res >= 200 && res <= 299) {
+        const char *state = resDoc["items"][0]["state"]["door_state"].as<const char*>();
         MYQ_LOG_LINE("Got state for %s: %s", doorSerial, state);
         for (int x = 0; x < sizeof(MYQ_DOOR_GETSTATE_VALUES) / sizeof(MYQ_DOOR_GETSTATE_VALUES[0]); x++) {
             if (strcmp(state, MYQ_DOOR_GETSTATE_VALUES[x]) == 0) return x;
@@ -113,22 +115,21 @@ int MyQ::setGarageState(String doorSerial, MYQ_DOOR_SETSTATE state) {
     headers[0]["value"] = "0";
 
     const char *newState = MYQ_DOOR_SETSTATE_VALUES[state];
-    DynamicJsonDocument res = authManager->request(
+    StaticJsonDocument<256> resDoc;
+    int res = authManager->request(
         "https://account-devices-gdo.myq-cloud.com/api/v5.2/Accounts/" + accountId + "/door_openers/" + doorSerial + "/" + newState,
-        256,
+        resDoc,
         true,
         "PUT",
         "",
         headers
     );
 
-    if (res.size() > 0) {
-        if (res["response"] == 202) {
-            MYQ_LOG_LINE("Set state for %s.", doorSerial);
-            if (state == MYQ_DOOR_SETSTATE_CLOSE) return MYQ_DOOR_GETSTATE_CLOSING;
-            else if (state == MYQ_DOOR_SETSTATE_OPEN) return MYQ_DOOR_GETSTATE_OPENING;
-            else return MYQ_DOOR_GETSTATE_UNKNOWN;
-        }
+    if (res >= 200 && res <= 299) {
+        MYQ_LOG_LINE("Set state for %s.", doorSerial);
+        if (state == MYQ_DOOR_SETSTATE_CLOSE) return MYQ_DOOR_GETSTATE_CLOSING;
+        else if (state == MYQ_DOOR_SETSTATE_OPEN) return MYQ_DOOR_GETSTATE_OPENING;
+        else return MYQ_DOOR_GETSTATE_UNKNOWN;
     }
 
     MYQ_ERROR_LINE("Error setting door state.");

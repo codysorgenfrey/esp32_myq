@@ -29,11 +29,11 @@ class MyQAuthenticationManager {
         String accessToken;
 
         MyQAuthenticationManager();
-        bool authorize(HardwareSerial *hwSerial, unsigned long baud);
+        bool authorize(bool forceReauth, HardwareSerial *hwSerial, unsigned long baud);
         bool isAuthorized();
-        DynamicJsonDocument request(
+        int request(
             String url, 
-            int docSize = 3072, 
+            JsonDocument &doc, 
             bool auth = true, 
             const char *method = "GET", 
             String payload = "", 

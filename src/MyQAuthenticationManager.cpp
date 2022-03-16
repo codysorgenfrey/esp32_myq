@@ -89,11 +89,12 @@ bool MyQAuthenticationManager::getAuthToken(String code) {
         "&redirect_uri=" + MYQ_API_REDIRECT_URI +
         "&scope=" + MYQ_API_AUTH_SCOPE; // does this work here?
     
-    DynamicJsonDocument res = request(MYQ_API_AUTH_URL + String("/token"), 3072, false, "POST", payload, headers);
+    DynamicJsonDocument resDoc(3072);
+    int res = request(MYQ_API_AUTH_URL + String("/token"), resDoc, false, "POST", payload, headers);
 
-    if (res.size() != 0) {
+    if (res >= 200 && res <= 299) {
         MYQ_LOG_LINE("Got authorization token.");
-        return storeAuthToken(res);
+        return storeAuthToken(resDoc);
     }
     
     MYQ_ERROR_LINE("Error getting authorization token.");
@@ -115,11 +116,12 @@ bool MyQAuthenticationManager::refreshAuthToken() {
         "&refresh_token=" + refreshToken +
         "&scope=" + MYQ_API_AUTH_SCOPE; // does this work here?
 
-    DynamicJsonDocument res = request(MYQ_API_AUTH_URL + String("/token"), 3072, false, "POST", payload, headers);
+    DynamicJsonDocument resDoc(3072);
+    int res = request(MYQ_API_AUTH_URL + String("/token"), resDoc, false, "POST", payload, headers);
 
-    if (res.size() != 0) {
+    if (res >= 200 && res <= 299) {
         MYQ_LOG_LINE("Got refresh token.");
-        return storeAuthToken(res);
+        return storeAuthToken(resDoc);
     }
     
     MYQ_ERROR_LINE("Error getting refresh token.");
@@ -144,6 +146,9 @@ bool MyQAuthenticationManager::storeAuthToken(const DynamicJsonDocument &doc) {
         return writeUserData();
     }
 
+    accessToken = "";
+    refreshToken = "";
+    tokenType = "Bearer";
     MYQ_ERROR_LINE("Error storing authorization tokens.");
     return false;
 }
@@ -252,9 +257,9 @@ MyQAuthenticationManager::MyQAuthenticationManager() {
     }
 }
 
-bool MyQAuthenticationManager::authorize(HardwareSerial *hwSerial, unsigned long baud) {
+bool MyQAuthenticationManager::authorize(bool forceReauth, HardwareSerial *hwSerial, unsigned long baud) {
     MYQ_LOG_LINE("Authorizing.");
-    if (refreshToken.length() == 0) {
+    if (refreshToken.length() == 0 || forceReauth) {
         if (!hwSerial) hwSerial->begin(baud);
         while (!hwSerial) { ; } // wait for serial monitor
         hwSerial->println("Get that damn URL code:");
@@ -286,9 +291,9 @@ bool MyQAuthenticationManager::isAuthorized() {
     return authorized;
 }
 
-DynamicJsonDocument MyQAuthenticationManager::request(
+int MyQAuthenticationManager::request(
     String url, 
-    int docSize, 
+    JsonDocument &doc, 
     bool auth, 
     const char *method, 
     String payload, 
@@ -301,8 +306,7 @@ DynamicJsonDocument MyQAuthenticationManager::request(
     MYQ_DETAIL_LINE("Authorized: %s", auth ? "yes" : "no");
     MYQ_DETAIL_LINE("Payload: %s", payload.c_str());
 
-    DynamicJsonDocument doc(docSize);
-    MYQ_DETAIL_LINE("Created doc of %i size", docSize);
+    int res = -1;
 
     if (WiFi.status() == WL_CONNECTED) {
         HTTPClient https;
@@ -330,21 +334,19 @@ DynamicJsonDocument MyQAuthenticationManager::request(
                 }
             }
 
-            int response;
-            if (strcmp(method, "POST") == 0) response = https.POST(payload);
-            else if (strcmp(method, "PUT") == 0) response = https.PUT(payload);
-            else if (strcmp(method, "GET") == 0) response = https.GET();
+            if (strcmp(method, "POST") == 0) res = https.POST(payload);
+            else if (strcmp(method, "PUT") == 0) res = https.PUT(payload);
+            else if (strcmp(method, "GET") == 0) res = https.GET();
             else MYQ_ERROR_LINE("Unknown request method.");
             MYQ_DETAIL_LINE("Request sent. Response %i", response);
 
-            if (response >= 200 && response <= 299) {
+            if (res >= 200 && res <= 299) {
                 DeserializationError err;
                 if (filter.size() != 0) err = deserializeJson(doc, client, DeserializationOption::Filter(filter), nestingLimit);
                 else err = deserializeJson(doc, client, nestingLimit);
                 
                 if (err) {
-                    if (err == DeserializationError::EmptyInput) doc["response"] = response; // Don't return empty on OK response
-                    else MYQ_ERROR_LINE("API request deserialization error: %s", err.c_str());
+                    MYQ_ERROR_LINE("API request deserialization error: %s", err.c_str());
                 } else {
                     MYQ_DETAIL_LINE("Desearialized stream into json.");
                     #if MYQ_DEBUG >= MYQ_DEBUG_LEVEL_ALL
@@ -353,7 +355,7 @@ DynamicJsonDocument MyQAuthenticationManager::request(
                     #endif
                 }
             } else {
-                MYQ_ERROR_LINE("%s Error, code: %i.", method, response);
+                MYQ_ERROR_LINE("%s Error, code: %i.", method, res);
                 MYQ_ERROR_LINE("Response: %s", https.getString().c_str());
             }
 
@@ -362,5 +364,5 @@ DynamicJsonDocument MyQAuthenticationManager::request(
         } else MYQ_ERROR_LINE("Could not connect to %s.", url.c_str());
     } else MYQ_ERROR_LINE("Not connected to WiFi.");
 
-    return doc;
+    return res;
 }
