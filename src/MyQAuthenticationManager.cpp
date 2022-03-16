@@ -91,8 +91,10 @@ bool MyQAuthenticationManager::getAuthToken(String code) {
     
     DynamicJsonDocument res = request(MYQ_API_AUTH_URL + String("/token"), 3072, false, "POST", payload, headers);
 
-    if (res.size() != 0)
+    if (res.size() != 0) {
+        MYQ_LOG_LINE("Got authorization token.");
         return storeAuthToken(res);
+    }
     
     MYQ_ERROR_LINE("Error getting authorization token.");
     return false;
@@ -115,8 +117,10 @@ bool MyQAuthenticationManager::refreshAuthToken() {
 
     DynamicJsonDocument res = request(MYQ_API_AUTH_URL + String("/token"), 3072, false, "POST", payload, headers);
 
-    if (res.size() != 0)
+    if (res.size() != 0) {
+        MYQ_LOG_LINE("Got refresh token.");
         return storeAuthToken(res);
+    }
     
     MYQ_ERROR_LINE("Error getting refresh token.");
     return false;
@@ -131,11 +135,12 @@ bool MyQAuthenticationManager::storeAuthToken(const DynamicJsonDocument &doc) {
     expiresInMS = doc["expires_in"].as<unsigned long>() * 1000;
 
     if (
-        !accessToken.equals("null") ||
-        !refreshToken.equals("null") ||
-        !tokenType.equals("null") ||
+        !accessToken.equals("null") &&
+        !refreshToken.equals("null") &&
+        !tokenType.equals("null") &&
         expiresInMS != 0
     ) {
+        MYQ_LOG_LINE("Stored authorization tokens.");
         return writeUserData();
     }
 
@@ -326,19 +331,13 @@ DynamicJsonDocument MyQAuthenticationManager::request(
             }
 
             int response;
-            if (strcmp(method, "POST") == 0)
-                response = https.POST(payload);
-            else if (strcmp(method, "PUT") == 0)
-                response = https.PUT(payload);
-            else if (strcmp(method, "GET") == 0)
-                response = https.GET();
-            else
-                MYQ_ERROR_LINE("Unknown request method.");
-            MYQ_DETAIL_LINE("Request sent.");
+            if (strcmp(method, "POST") == 0) response = https.POST(payload);
+            else if (strcmp(method, "PUT") == 0) response = https.PUT(payload);
+            else if (strcmp(method, "GET") == 0) response = https.GET();
+            else MYQ_ERROR_LINE("Unknown request method.");
+            MYQ_DETAIL_LINE("Request sent. Response %i", response);
 
-            if (response >= 200 || response <= 299) {
-                MYQ_DETAIL_LINE("Response: %i", response);
-                
+            if (response >= 200 && response <= 299) {
                 DeserializationError err;
                 if (filter.size() != 0) err = deserializeJson(doc, client, DeserializationOption::Filter(filter), nestingLimit);
                 else err = deserializeJson(doc, client, nestingLimit);
@@ -360,12 +359,8 @@ DynamicJsonDocument MyQAuthenticationManager::request(
 
             client.stop();
             https.end();
-        } else {
-            MYQ_ERROR_LINE("Could not connect to %s.", url.c_str());
-        }
-    } else {
-        MYQ_ERROR_LINE("Not connected to WiFi.");
-    }
+        } else MYQ_ERROR_LINE("Could not connect to %s.", url.c_str());
+    } else MYQ_ERROR_LINE("Not connected to WiFi.");
 
     return doc;
 }

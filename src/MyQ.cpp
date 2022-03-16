@@ -22,7 +22,7 @@ const char* MYQ_DOOR_SETSTATE_VALUES[2] = {
 String MyQ::getAccountId() {
     MYQ_LOG_LINE("Getting account ID.");
     if (accountId.length() != 0) {
-        MYQ_LOG_LINE("Account ID already exists.");
+        MYQ_LOG_LINE("Account ID %s already exists.", accountId.c_str());
         return accountId;
     }
 
@@ -30,7 +30,7 @@ String MyQ::getAccountId() {
 
     if (res.size() > 0) {
         accountId = res["accounts"][0]["id"].as<String>();
-        MYQ_LOG_LINE("Got account ID from MyQ.");
+        MYQ_LOG_LINE("Got account ID %s.", accountId.c_str());
         return accountId; 
     }
 
