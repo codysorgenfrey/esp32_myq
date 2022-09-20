@@ -315,6 +315,8 @@ int MyQAuthenticationManager::request(
         client.setCACert(MYQ_CA_CERT);
 
         if (https.begin(client, url)){
+            https.setTimeout(5000); // don't take forever waiting for response
+
             if (auth) {
                 MYQ_DETAIL_LINE("Setting authorization credentials.");
                 https.setAuthorization(""); // clear it out
