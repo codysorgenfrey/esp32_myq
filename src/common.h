@@ -52,31 +52,31 @@ LPAvTK33sefOT6jEm0pUBsV/fdUID+Ic/n4XuKxe9tQWskMJDE32p2u0mYRlynqI\n\
 #define MYQ_DEBUG_LEVEL_ALL 2
 
 #ifndef MYQ_DEBUG
-    #define MYQ_DEBUG MYQ_DEBUG_LEVEL_ERROR
+#define MYQ_DEBUG MYQ_DEBUG_LEVEL_ERROR
 #endif
 
 #if MYQ_DEBUG >= MYQ_DEBUG_LEVEL_ERROR
-    #define MYQ_ERROR(message, ...) printf("ERR [%7lu][%.2fkb] MyQ: " message , millis(), (esp_get_free_heap_size() * 0.001f), ##__VA_ARGS__)
-    #define MYQ_ERROR_LINE(message, ...) printf("ERR [%7lu][%.2fkb] MyQ: " message "\n", millis(), (esp_get_free_heap_size() * 0.001f), ##__VA_ARGS__)
+#define MYQ_ERROR(message, ...) printf("ERR [%7lu][%.2fkb] MyQ: " message , millis(), (esp_get_free_heap_size() * 0.001f), ##__VA_ARGS__)
+#define MYQ_ERROR_LINE(message, ...) printf("ERR [%7lu][%.2fkb] MyQ: " message "\n", millis(), (esp_get_free_heap_size() * 0.001f), ##__VA_ARGS__)
 #else
-    #define MYQ_ERROR(message, ...)
-    #define MYQ_ERROR_LINE(message, ...)
+#define MYQ_ERROR(message, ...)
+#define MYQ_ERROR_LINE(message, ...)
 #endif
 
 #if MYQ_DEBUG >= MYQ_DEBUG_LEVEL_INFO
-    #define MYQ_LOG(message, ...) printf(">>> [%7lu][%.2fkb] MyQ: " message , millis(), (esp_get_free_heap_size() * 0.001f), ##__VA_ARGS__)
-    #define MYQ_LOG_LINE(message, ...) printf(">>> [%7lu][%.2fkb] MyQ: " message "\n", millis(), (esp_get_free_heap_size() * 0.001f), ##__VA_ARGS__)
+#define MYQ_LOG(message, ...) printf(">>> [%7lu][%.2fkb] MyQ: " message , millis(), (esp_get_free_heap_size() * 0.001f), ##__VA_ARGS__)
+#define MYQ_LOG_LINE(message, ...) printf(">>> [%7lu][%.2fkb] MyQ: " message "\n", millis(), (esp_get_free_heap_size() * 0.001f), ##__VA_ARGS__)
 #else
-    #define MYQ_LOG(message, ...)
-    #define MYQ_LOG_LINE(message, ...)
+#define MYQ_LOG(message, ...)
+#define MYQ_LOG_LINE(message, ...)
 #endif
 
 #if MYQ_DEBUG >= MYQ_DEBUG_LEVEL_ALL
-    #define MYQ_DETAIL(message, ...) printf(">>> [%7lu][%.2fkb] MyQ: " message , millis(), (esp_get_free_heap_size() * 0.001f), ##__VA_ARGS__)
-    #define MYQ_DETAIL_LINE(message, ...) printf(">>> [%7lu][%.2fkb] MyQ: " message "\n", millis(), (esp_get_free_heap_size() * 0.001f), ##__VA_ARGS__)
+#define MYQ_DETAIL(message, ...) printf(">>> [%7lu][%.2fkb] MyQ: " message , millis(), (esp_get_free_heap_size() * 0.001f), ##__VA_ARGS__)
+#define MYQ_DETAIL_LINE(message, ...) printf(">>> [%7lu][%.2fkb] MyQ: " message "\n", millis(), (esp_get_free_heap_size() * 0.001f), ##__VA_ARGS__)
 #else
-    #define MYQ_DETAIL(message, ...)
-    #define MYQ_DETAIL_LINE(message, ...)
+#define MYQ_DETAIL(message, ...)
+#define MYQ_DETAIL_LINE(message, ...)
 #endif
 
 #endif

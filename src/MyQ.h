@@ -6,36 +6,36 @@
 #include "MyQAuthenticationManager.h"
 
 enum MYQ_DOOR_GETSTATE {
-    MYQ_DOOR_GETSTATE_UNKNOWN = -1,
-    MYQ_DOOR_GETSTATE_CLOSED,
-    MYQ_DOOR_GETSTATE_CLOSING,
-    MYQ_DOOR_GETSTATE_OPEN,
-    MYQ_DOOR_GETSTATE_OPENING,
-    MYQ_DOOR_GETSTATE_STOPPED,
-    MYQ_DOOR_GETSTATE_AUTOREVERSE
+  MYQ_DOOR_GETSTATE_UNKNOWN = -1,
+  MYQ_DOOR_GETSTATE_CLOSED,
+  MYQ_DOOR_GETSTATE_CLOSING,
+  MYQ_DOOR_GETSTATE_OPEN,
+  MYQ_DOOR_GETSTATE_OPENING,
+  MYQ_DOOR_GETSTATE_STOPPED,
+  MYQ_DOOR_GETSTATE_AUTOREVERSE
 };
 
 enum MYQ_DOOR_SETSTATE {
-    MYQ_DOOR_SETSTATE_CLOSE = 0,
-    MYQ_DOOR_SETSTATE_OPEN
+  MYQ_DOOR_SETSTATE_CLOSE = 0,
+  MYQ_DOOR_SETSTATE_OPEN
 };
 
 class MyQ {
-    private:
-        MyQAuthenticationManager *authManager;
-        HardwareSerial *_serial;
-        int _baud;
-        String accountId;
-        unsigned long lastAuthCheck;
+private:
+  MyQAuthenticationManager* authManager;
+  HardwareSerial* _serial;
+  int _baud;
+  String accountId;
+  unsigned long lastAuthCheck;
 
-        String getAccountId();
+  String getAccountId();
 
-    public:
-        MyQ();
-        bool setup(bool forceReauth = false, HardwareSerial *inSerial = &Serial, int inBaud = 115200);
-        void loop();
-        int getGarageState(String doorSerial);
-        int setGarageState(String doorSerial, MYQ_DOOR_SETSTATE state);
+public:
+  MyQ();
+  bool setup(bool forceReauth = false, HardwareSerial* inSerial = nullptr, int inBaud = 115200);
+  void loop();
+  int getGarageState(String doorSerial);
+  int setGarageState(String doorSerial, MYQ_DOOR_SETSTATE state);
 };
 
 #endif
