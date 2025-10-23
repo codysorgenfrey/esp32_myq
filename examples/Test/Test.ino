@@ -1,7 +1,7 @@
+#include <Arduino.h>
 #include <WiFi.h>
 #include "secrets.h"
 #include <MyQ.h>
-#include <Arduino.h>
 
 #define LOG(message, ...) printf(">>> [%7d][%.2fkb] Test.ino: " message "\n", millis(), (esp_get_free_heap_size() * 0.001f), ##__VA_ARGS__)
 
