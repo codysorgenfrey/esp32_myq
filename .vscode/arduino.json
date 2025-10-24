@@ -1,7 +1,7 @@
 {
     "configuration": "CDCOnBoot=default,PartitionScheme=huge_app,CPUFreq=160,FlashFreq=80,UploadSpeed=115200,DebugLevel=none,EraseFlash=none",
     "board": "esp32:esp32:lolin_c3_mini",
-    "port": "/dev/tty.usbmodem11401",
+    "port": "/dev/tty.usbmodem1401",
     "sketch": "examples/Test/Test.ino",
     "output": "./build",
     "programmer": "esptool"
