@@ -32,7 +32,7 @@ private:
 
 public:
   MyQ();
-  bool setup(bool forceReauth = false, HardwareSerial* inSerial = nullptr, int inBaud = 115200);
+  bool setup(bool forceReauth = false, HardwareSerial* inSerial = (HardwareSerial*)&Serial, int inBaud = 115200);
   void loop();
   int getGarageState(String doorSerial);
   int setGarageState(String doorSerial, MYQ_DOOR_SETSTATE state);

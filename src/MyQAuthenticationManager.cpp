@@ -141,31 +141,33 @@ bool MyQAuthenticationManager::writeUserData() {
   userData["refreshToken"] = refreshToken;
   userData["codeVerifier"] = codeVerifier;
 
-  if (SPIFFS.begin(true)) {
-    File file = SPIFFS.open(MYQ_USER_DATA_FILE, "w");
-    if (file) {
-      if (serializeJson(userData, file) > 0) {
-        MYQ_LOG_LINE("Wrote authorization tokens to file.");
-      }
-      else {
-        MYQ_ERROR_LINE("Failed to write data to %s.", MYQ_USER_DATA_FILE);
-        success = false;
-      }
+  // Try to mount SPIFFS, format if necessary
+  if (!SPIFFS.begin(false)) {
+    MYQ_ERROR_LINE("SPIFFS mount failed, attempting to format...");
+    if (!SPIFFS.begin(true)) {
+      MYQ_ERROR_LINE("SPIFFS format failed. Cannot write user data.");
+      return false;
+    }
+  }
 
-      file.close();
+  File file = SPIFFS.open(MYQ_USER_DATA_FILE, "w");
+  if (file) {
+    if (serializeJson(userData, file) > 0) {
+      MYQ_LOG_LINE("Wrote authorization tokens to file.");
     }
     else {
-      MYQ_ERROR_LINE("Failed to open %s.", MYQ_USER_DATA_FILE);
+      MYQ_ERROR_LINE("Failed to write data to %s.", MYQ_USER_DATA_FILE);
       success = false;
     }
 
-    SPIFFS.end();
+    file.close();
   }
   else {
-    MYQ_ERROR_LINE("Error starting SPIFFS.");
+    MYQ_ERROR_LINE("Failed to open %s.", MYQ_USER_DATA_FILE);
     success = false;
   }
 
+  SPIFFS.end();
   return success;
 }
 
@@ -173,54 +175,62 @@ bool MyQAuthenticationManager::readUserData() {
   MYQ_LOG_LINE("Reading authorization tokens from file.");
   bool success = true;
 
-  if (SPIFFS.begin(true)) {
-    File file = SPIFFS.open(MYQ_USER_DATA_FILE, "r");
-    if (file) {
-      DynamicJsonDocument userData(1536);
-      DeserializationError err = deserializeJson(userData, file);
-      if (err) {
-        MYQ_ERROR_LINE("Error deserializing %s.", MYQ_USER_DATA_FILE);
-        MYQ_ERROR_LINE("%s", err.c_str());
-        success = false;
-      }
-      else {
-        accessToken = userData["accessToken"].as<String>();
-        refreshToken = userData["refreshToken"].as<String>();
-        codeVerifier = userData["codeVerifier"].as<String>();
+  // Try to mount SPIFFS first without formatting
+  if (!SPIFFS.begin(false)) {
+    MYQ_ERROR_LINE("SPIFFS mount failed. Will need to format on first write.");
+    return false;
+  }
 
-        if (
-          accessToken.equals("null") ||
-          refreshToken.equals("null") ||
-          codeVerifier.equals("null")
-          ) {
-          MYQ_ERROR_LINE("Found file but contents are empty.");
-          accessToken = "";
-          refreshToken = "";
-          codeVerifier = "";
-          success = false;
-        }
-
-        MYQ_LOG_LINE("Read authorization tokens from file.");
-        #if MYQ_DEBUG >= MYQ_DEBUG_LEVEL_ALL
-        serializeJsonPretty(userData, Serial);
-        Serial.println("");
-        #endif
-      }
-
-      file.close();
-    }
-    else {
-      MYQ_ERROR_LINE("Failed to open %s.", MYQ_USER_DATA_FILE);
-      success = false;
-    }
-
-    SPIFFS.end();
+  if (SPIFFS.exists(MYQ_USER_DATA_FILE)) {
+    MYQ_LOG_LINE("Found existing user data file.");
   }
   else {
-    MYQ_ERROR_LINE("Error starting SPIFFS.");
+    MYQ_LOG_LINE("No existing user data file.");
+    SPIFFS.end();
+    return false;
+  }
+
+  File file = SPIFFS.open(MYQ_USER_DATA_FILE, "r");
+  if (file) {
+    DynamicJsonDocument userData(1536);
+    DeserializationError err = deserializeJson(userData, file);
+    if (err) {
+      MYQ_ERROR_LINE("Error deserializing %s.", MYQ_USER_DATA_FILE);
+      MYQ_ERROR_LINE("%s", err.c_str());
+      success = false;
+    }
+    else {
+      accessToken = userData["accessToken"].as<String>();
+      refreshToken = userData["refreshToken"].as<String>();
+      codeVerifier = userData["codeVerifier"].as<String>();
+
+      if (
+        accessToken.equals("null") ||
+        refreshToken.equals("null") ||
+        codeVerifier.equals("null")
+        ) {
+        MYQ_ERROR_LINE("Found file but contents are empty.");
+        accessToken = "";
+        refreshToken = "";
+        codeVerifier = "";
+        success = false;
+      }
+
+      MYQ_LOG_LINE("Read authorization tokens from file.");
+      #if MYQ_DEBUG >= MYQ_DEBUG_LEVEL_ALL
+      serializeJsonPretty(userData, Serial);
+      Serial.println("");
+      #endif
+    }
+
+    file.close();
+  }
+  else {
+    MYQ_ERROR_LINE("Failed to open %s.", MYQ_USER_DATA_FILE);
     success = false;
   }
 
+  SPIFFS.end();
   return success;
 }
 
